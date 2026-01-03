@@ -1,0 +1,12 @@
+[package]
+name = "SodokuSolver"
+version = "0.1.0"
+edition = "2024"
+
+[profile.dev]
+opt-level = 3
+
+[dependencies]
+colored = "3.0.0"
+clearscreen = "4.0.2"
+rdev = "0.5.3"
