@@ -1,0 +1,248 @@
+use crate::{Cell, Position, COLS, REGS, ROWS};
+use colored::{Color, Colorize};
+use std::fmt;
+use std::fmt::Formatter;
+
+#[derive(Clone)]
+pub struct Grid {
+    pub cells: [Cell; 81],
+    pub solution: Option<[[u8; 9]; 9]>,
+    pub starting_cell_count: usize,
+    pub unsolved_groups: [Vec<Vec<usize>>; 3],
+    pub auto_promote: bool,
+}
+// region Getters
+impl Grid {
+    fn get_mut_cell(&mut self, location: Position) -> Option<&mut Cell> {
+        if location.row > 8 || location.col > 8 {
+            return None;
+        }
+        Some(&mut self.cells[location.row * 9 + location.col])
+    }
+    fn get_cell_unchecked(&self, location: Position) -> &Cell {
+        &self.cells[location.row * 9 + location.col]
+    }
+    #[allow(dead_code)]
+    pub fn get_mut_cell_unchecked(&mut self, location: Position) -> &mut Cell {
+        &mut self.cells[location.row * 9 + location.col]
+    }
+    #[allow(dead_code)]
+    pub fn get_percent(&self) -> f32 {
+        let mut count_cells = 0;
+        for cell in self.cells {
+            if cell.value > 0 {
+                count_cells += 1;
+            }
+        }
+        let added = count_cells - self.starting_cell_count;
+        let needed = 81 - self.starting_cell_count;
+        (added as f32) / (needed as f32)
+    }
+}
+// endregion Getters
+// region Init
+impl Grid {
+    pub fn from_string(input: &str, answer: Option<[[u8; 9]; 9]>) -> Grid {
+        let mut grid = Grid::new();
+        let mut starting_cell_count = 0;
+        for (row, line) in input.lines().enumerate() {
+            for (col, cell_value) in line.chars().enumerate() {
+                if cell_value == ' ' || cell_value == '0' {
+                    continue;
+                }
+                starting_cell_count += 1;
+                grid.set_cell(
+                    Position { row, col },
+                    cell_value.to_digit(10).unwrap() as u8,
+                );
+                grid.get_mut_cell_unchecked(Position { row, col }).is_given = true;
+            }
+        }
+        if answer.is_some() {
+            let answer = answer.unwrap();
+            for row in 0..answer.len() {
+                for col in 0..answer[row].len() {
+                    grid.get_mut_cell_unchecked(Position { row, col }).answer =
+                        Some(answer[row][col]);
+                }
+            }
+        }
+        grid.solution = answer;
+        grid.starting_cell_count = starting_cell_count;
+        grid
+    }
+
+    pub fn new() -> Grid {
+        let cell = Cell {
+            candidates: 0x1FF,
+            value: 0,
+            answer: None,
+            is_given: false,
+        };
+        let cells = [cell; 81];
+        let rows = ROWS.clone().map(|x| x.to_vec()).to_vec();
+        let cols = COLS.clone().map(|x| x.to_vec()).to_vec();
+        let regs = REGS.clone().map(|x| x.to_vec()).to_vec();
+        let unsolved_groups = [rows, cols, regs];
+        Grid {
+            cells,
+            solution: None,
+            starting_cell_count: 0,
+            unsolved_groups,
+            auto_promote: true,
+        }
+    }
+}
+// endregion Init
+
+impl Grid {
+    pub fn set_cell(&mut self, location: Position, value: u8) {
+        let cell = self.get_mut_cell(location.clone());
+        if cell.is_none() {
+            return;
+        }
+        let cell = cell.unwrap();
+        if cell.value != 0 {
+            if cell.value != value {
+                panic!("Overwriting existing cell!");
+            }
+            return;
+        }
+        if cell.candidates & (1 << (value - 1)) == 0 {
+            // If this value isn't a possible value, panic
+            panic!("INVALID SET CELL");
+        }
+        cell.set_value(value);
+        self.remove_seen_candidates(location);
+        //self.remove_unsolved_cell(location.row * 9 + location.col)
+    }
+    #[allow(dead_code)]
+    fn remove_unsolved_cell(&mut self, index: usize) {
+        // Removes all occurrences of the specified index in Unsolved Groups
+        self.unsolved_groups.iter_mut().for_each(|group| {
+            group
+                .iter_mut()
+                .for_each(|cells| cells.retain(|x| *x != index))
+        });
+    }
+    pub fn remove_seen_candidates(&mut self, location: Position) {
+        let index = location.row * 9 + location.col;
+        let value = self.cells[index].value;
+        self.remove_seen_candidate_group(&COLS[location.col], index, value);
+        self.remove_seen_candidate_group(&ROWS[location.row], index, value);
+        let region = location.region();
+        self.remove_seen_candidate_group(&REGS[region.0], index, value);
+    }
+    fn remove_seen_candidate_group(&mut self, group: &[usize; 9], index: usize, value: u8) {
+        for other_index in *group {
+            if other_index != index {
+                self.cells[other_index].remove_possibility(value);
+                if self.auto_promote {
+                    if self.cells[other_index].promote_single_candidate() {
+                        self.remove_seen_candidates(Position::from_index(other_index));
+                    }
+                }
+            }
+        }
+    }
+}
+// region Print
+impl Grid {
+    pub fn print_possibilities(&self) {
+        println!(
+            "{}-",
+            "- 987654321 987654321 987654321  "
+                .repeat(3)
+                .color(Color::White)
+        );
+        for i in 0..9 {
+            print!("| ");
+            for j in 0..9 {
+                print!(
+                    "{:?} ",
+                    self.get_cell_unchecked(Position { row: i, col: j })
+                );
+                if j % 3 == 2 {
+                    print!(" | ");
+                }
+            }
+            println!();
+            if i % 3 == 2 {
+                println!("{}", "-".repeat(100));
+            }
+        }
+    }
+    pub fn print_board(&self) {
+        println!("{}", "-".repeat(25));
+        for i in 0..9 {
+            print!("| ");
+            for j in 0..9 {
+                print!(
+                    "{:} ",
+                    self.get_cell_unchecked(Position { row: i, col: j }).value
+                );
+                if j % 3 == 2 {
+                    print!("| ");
+                }
+            }
+            println!();
+            if i % 3 == 2 {
+                println!("{}", "-".repeat(25));
+            }
+        }
+    }
+}
+impl fmt::Display for Grid {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut accumulate = "".to_string();
+        accumulate += "";
+        let mut lines: Vec<String> = Vec::with_capacity(40);
+        lines.push("╔═══════════╦═══════════╦═══════════╗".to_string());
+        for i in 0..9 {
+            if i == 3 || i == 6 {
+                lines.push("╠═══════════╬═══════════╬═══════════╣".to_string());
+            }
+            if i % 3 != 0 {
+                lines.push("║┄┄┄ ┄┄┄ ┄┄┄║┄┄┄ ┄┄┄ ┄┄┄║┄┄┄ ┄┄┄ ┄┄┄║".to_string());
+            }
+            let mut cards: Vec<String> = Vec::with_capacity(9);
+            for j in 0..9 {
+                let cell = self.get_cell_unchecked(Position { row: i, col: j });
+                cards.push(cell.get_print_card());
+            }
+            let card_rows = cards
+                .iter()
+                .map(|str| str.split('\n').collect::<Vec<&str>>())
+                .collect::<Vec<Vec<&str>>>();
+            let mut rows: Vec<String> = vec!["║".to_string(); 3];
+            for (j, row) in card_rows.iter().enumerate() {
+                rows[0] += row[0];
+                rows[1] += row[1];
+                rows[2] += row[2];
+                if j % 3 == 2 {
+                    rows[0] += "║";
+                    rows[1] += "║";
+                    rows[2] += "║";
+                } else {
+                    rows[0] += "┆";
+                    rows[1] += "┆";
+                    rows[2] += "┆";
+                }
+            }
+            rows[0] = rows[0].trim_end().to_string();
+            rows[1] = rows[1].trim_end().to_string();
+            rows[2] = rows[2].trim_end().to_string();
+            lines.push(rows[0].to_string());
+            lines.push(rows[1].to_string());
+            lines.push(rows[2].to_string());
+        }
+        lines.push("╚═══════════╩═══════════╩═══════════╝".to_string());
+        for i in lines {
+            accumulate += i.as_str();
+            accumulate += "\n";
+        }
+        accumulate = accumulate.trim_end().to_string();
+        write!(f, "{:9}", accumulate)
+    }
+}
+// endregion Print
