@@ -5,7 +5,7 @@ use crate::{Cell, Position};
 pub const HIDDEN_PAIR: Solver = Solver::new(
     "Hidden Pair",
     "H2",
-    "",
+    "Two values only showed up in the same 2 cells, removed all other possibilites from those cells",
     solve_hidden_pair,
     step_hidden_pair,
     solve_hidden_pair_cell,

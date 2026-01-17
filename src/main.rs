@@ -5,8 +5,10 @@ mod solvers;
 mod tests;
 use crate::grid::Grid;
 use crate::tests::Test;
+use colored::Colorize;
 use std::fmt;
 use std::fmt::Formatter;
+
 #[allow(dead_code)]
 enum GroupType {
     Rows,
@@ -71,6 +73,7 @@ struct Cell {
     value: u8,
     answer: Option<u8>,
     is_given: bool,
+    is_dirty: bool,
 }
 impl fmt::Debug for Cell {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -91,12 +94,23 @@ impl fmt::Debug for Cell {
 }
 #[allow(dead_code)]
 impl Cell {
+    fn color_card(card: String) -> String {
+        let result = card
+            .split("\n")
+            .map(|x| x.blue().to_string())
+            .collect::<Vec<String>>();
+        return result.join("\n").to_string();
+    }
     pub fn get_print_card(&self) -> String {
         if self.value == 0 {
             let mut base = format!("{:?}", self);
             base.insert(6, '\n');
             base.insert(3, '\n');
-            base.replace('-', " ")
+            base = base.replace('-', " ");
+            if self.is_dirty {
+                base = Self::color_card(base);
+            }
+            base
         } else {
             const NUMBERS: [&str; 9] = [
                 " ┓ \n ┃ \n ┻ ",
@@ -109,7 +123,11 @@ impl Cell {
                 "┏━┓\n┣━┫\n┗━┛",
                 "┏━┓\n┗━┫\n┗━┛",
             ];
-            NUMBERS[self.value as usize - 1].to_string()
+            let result = NUMBERS[self.value as usize - 1];
+            if self.is_dirty {
+                return Self::color_card(result.to_string());
+            }
+            result.to_string()
         }
     }
     pub fn contains_value(&self, value: u8) -> bool {
@@ -139,6 +157,7 @@ impl Cell {
         if bits & self.candidates != 0 {
             self.candidates &= !bits;
             self.is_answer_possible();
+            self.is_dirty = true;
             return true;
         }
         false
@@ -182,6 +201,7 @@ impl Cell {
         }
         self.value = value;
         self.candidates = 0;
+        self.is_dirty = true;
     }
 }
 
@@ -210,7 +230,7 @@ enum RunType {
 fn main() {
     let run_type = RunType::Display;
     //let test = tests::rule_tests::HIDDEN_PAIR;
-    let test = tests::hard_tests::TEST_5;
+    let test = tests::hard_tests::TEST_7;
     //let test = tests::medium_tests::TEST_1;
     //let test = tests::easy_tests::TEST_2;
     match run_type {

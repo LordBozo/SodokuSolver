@@ -62,14 +62,16 @@ pub fn solve_async(grid: &mut Grid) {
     grid.auto_promote = false;
     while dirty {
         dirty = false;
-        clear().expect("TODO: panic message");
-        println!("{}", grid);
+        grid.clear_dirty();
 
         for step in SOLVERS {
             let func = step.step_function;
             dirty |= func(grid);
             if dirty {
+                clear().expect("TODO: panic message");
+                println!("{}", grid);
                 println!("{}: {}", step.name, step.description);
+
                 std::thread::sleep(std::time::Duration::from_millis(1000));
                 break;
             }

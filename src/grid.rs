@@ -78,6 +78,7 @@ impl Grid {
             value: 0,
             answer: None,
             is_given: false,
+            is_dirty: false,
         };
         let cells = [cell; 81];
         let rows = ROWS.clone().map(|x| x.to_vec()).to_vec();
@@ -145,6 +146,11 @@ impl Grid {
             }
         }
     }
+    pub fn clear_dirty(&mut self) {
+        for cell in self.cells.iter_mut() {
+            cell.is_dirty = false;
+        }
+    }
 }
 // region Print
 impl Grid {
@@ -194,16 +200,17 @@ impl Grid {
 }
 impl fmt::Display for Grid {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let highlight = Position::new(0, 1);
         let mut accumulate = "".to_string();
         accumulate += "";
         let mut lines: Vec<String> = Vec::with_capacity(40);
-        lines.push("╔═══════════╦═══════════╦═══════════╗".to_string());
+        lines.push("╔═══════════╦═══════════╦═══════════╗".normal().to_string());
         for i in 0..9 {
             if i == 3 || i == 6 {
-                lines.push("╠═══════════╬═══════════╬═══════════╣".to_string());
+                lines.push("╠═══════════╬═══════════╬═══════════╣".normal().to_string());
             }
             if i % 3 != 0 {
-                lines.push("║┄┄┄ ┄┄┄ ┄┄┄║┄┄┄ ┄┄┄ ┄┄┄║┄┄┄ ┄┄┄ ┄┄┄║".to_string());
+                lines.push("║┄┄┄ ┄┄┄ ┄┄┄║┄┄┄ ┄┄┄ ┄┄┄║┄┄┄ ┄┄┄ ┄┄┄║".normal().to_string());
             }
             let mut cards: Vec<String> = Vec::with_capacity(9);
             for j in 0..9 {
@@ -214,7 +221,7 @@ impl fmt::Display for Grid {
                 .iter()
                 .map(|str| str.split('\n').collect::<Vec<&str>>())
                 .collect::<Vec<Vec<&str>>>();
-            let mut rows: Vec<String> = vec!["║".to_string(); 3];
+            let mut rows: Vec<String> = vec!["║".normal().to_string(); 3];
             for (j, row) in card_rows.iter().enumerate() {
                 rows[0] += row[0];
                 rows[1] += row[1];

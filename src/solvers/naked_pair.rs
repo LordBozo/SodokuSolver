@@ -5,7 +5,7 @@ use crate::{Cell, Position};
 pub const NAKED_PAIR: Solver = Solver::new(
     "Naked Pair",
     "N2",
-    "",
+    "Two cells in a group have the same pair of numbers, so those numbers were removed from everywhere else in the group",
     solve_naked_pair,
     step_naked_pair,
     solve_naked_pair_cell,
