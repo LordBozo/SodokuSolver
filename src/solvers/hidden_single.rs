@@ -8,7 +8,6 @@ pub const HIDDEN_SINGLE: Solver = Solver::new(
     "Fills in a cell if that is the only place a digit can go in a Row/Column/Region",
     solve_hidden_single,
     step_hidden_single,
-    solve_hidden_single_cell,
 );
 
 pub fn step_hidden_single(grid: &mut Grid) -> bool {
@@ -70,6 +69,25 @@ fn solve_hidden_single_collection(
     }
     None
 }
-fn solve_hidden_single_cell(grid: &mut Grid, pos: Position) -> bool {
-    false
+#[allow(unused)]
+fn solve_hidden_single_cell(grid: &Grid, pos: Position) -> Option<u8> {
+    let cell_index = pos.get_index();
+    let possibilities = grid.get_cell_unchecked(pos).get_possibilities();
+    let groups = Grid::get_cell_groups(pos);
+    for group in groups {
+        let mut candidate_clone = possibilities.clone();
+        for cell in group {
+            if *cell == cell_index {
+                continue;
+            }
+            let other_possibilities = grid.cells[*cell].get_possibilities();
+            candidate_clone.retain(|x| !other_possibilities.contains(x));
+        }
+        // the candidate vec will only contain values that only show up once in the row
+        // this should either be empty (rule cant discern), or have 1 entry (rule applied)
+        if candidate_clone.len() == 1 {
+            return Some(candidate_clone[0] as u8);
+        }
+    }
+    None
 }

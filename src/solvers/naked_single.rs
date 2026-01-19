@@ -8,7 +8,6 @@ pub const NAKED_SINGLE: Solver = Solver::new(
     "Fills in a cell that only has one possibility",
     solve_naked_single,
     step_naked_single,
-    solve_naked_single_cell,
 );
 pub fn step_naked_single(grid: &mut Grid) -> bool {
     if grid.auto_promote {
@@ -45,13 +44,20 @@ pub fn solve_naked_single(grid: &mut Grid) -> bool {
     }
     dirty
 }
-fn solve_naked_single_cell(grid: &mut Grid, pos: Position) -> bool {
-    if grid.auto_promote {
-        return false;
+#[allow(unused)]
+fn solve_naked_single_cell(grid: &Grid, pos: Position) -> Option<u8> {
+    let cell = grid.get_cell(pos);
+    if cell.is_none() {
+        return None;
     }
-    let result = grid.get_mut_cell_unchecked(pos).promote_single_candidate();
-    if result {
-        grid.remove_seen_candidates(pos);
+    let cell = cell.unwrap();
+    if cell.value != 0 {
+        return Some(cell.value);
     }
-    result
+
+    let result = cell.get_possibilities();
+    if result.len() == 1 {
+        return Some(result[0] as u8);
+    }
+    None
 }

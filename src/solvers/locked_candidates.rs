@@ -6,10 +6,9 @@ use std::collections::HashSet;
 pub const LOCKED_CANDIDATES: Solver = Solver::new(
     "Locked Candidates",
     "LC",
-    "",
+    "If the only place a value appears in one group, is contained within second group, remove all other occurrences of that value in the second group",
     solve_locked_candidates,
     step_locked_candidates,
-    solve_locked_candidates_cell,
 );
 pub fn step_locked_candidates(grid: &mut Grid) -> bool {
     let mut dirty = false;
@@ -131,8 +130,4 @@ fn filter_region_by_lines(grid: &mut Grid, region_index: usize) -> bool {
         }
     }
     dirty
-}
-
-fn solve_locked_candidates_cell(grid: &mut Grid, pos: Position) -> bool {
-    false
 }

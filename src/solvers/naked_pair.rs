@@ -1,6 +1,6 @@
 use crate::grid::Grid;
 use crate::solvers::Solver;
-use crate::{Cell, Position};
+use crate::Cell;
 
 pub const NAKED_PAIR: Solver = Solver::new(
     "Naked Pair",
@@ -8,7 +8,6 @@ pub const NAKED_PAIR: Solver = Solver::new(
     "Two cells in a group have the same pair of numbers, so those numbers were removed from everywhere else in the group",
     solve_naked_pair,
     step_naked_pair,
-    solve_naked_pair_cell,
 );
 pub fn step_naked_pair(grid: &mut Grid) -> bool {
     for collection in &grid.unsolved_groups {
@@ -53,8 +52,4 @@ fn solve_naked_pair_collection(cells: &mut [Cell; 81], collection: &Vec<Vec<usiz
         }
     }
     dirty
-}
-
-fn solve_naked_pair_cell(grid: &mut Grid, pos: Position) -> bool {
-    false
 }

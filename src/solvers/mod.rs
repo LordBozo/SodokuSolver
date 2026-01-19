@@ -10,7 +10,6 @@ use crate::solvers::hidden_single::HIDDEN_SINGLE;
 use crate::solvers::locked_candidates::LOCKED_CANDIDATES;
 use crate::solvers::naked_pair::NAKED_PAIR;
 use crate::solvers::naked_single::NAKED_SINGLE;
-use crate::Position;
 use clearscreen::clear;
 
 pub const SOLVERS: [&Solver; 5] = [
@@ -77,14 +76,14 @@ pub fn solve_async(grid: &mut Grid) {
             }
         }
     }
+    println!("{}", grid);
 }
 pub struct Solver {
-    name: &'static str,
-    description: &'static str,
-    abbreviation: &'static str,
-    solve_function: fn(&mut Grid) -> bool,
-    step_function: fn(&mut Grid) -> bool,
-    cell_function: fn(&mut Grid, pos: Position) -> bool,
+    pub name: &'static str,
+    pub description: &'static str,
+    pub abbreviation: &'static str,
+    pub solve_function: fn(&mut Grid) -> bool,
+    pub step_function: fn(&mut Grid) -> bool,
 }
 impl Solver {
     const fn new(
@@ -93,7 +92,6 @@ impl Solver {
         description: &'static str,
         solve_function: fn(&mut Grid) -> bool,
         step_function: fn(&mut Grid) -> bool,
-        cell_function: fn(&mut Grid, pos: Position) -> bool,
     ) -> Solver {
         Solver {
             name,
@@ -101,7 +99,6 @@ impl Solver {
             abbreviation,
             solve_function,
             step_function,
-            cell_function,
         }
     }
 }

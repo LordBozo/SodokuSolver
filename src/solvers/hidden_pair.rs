@@ -1,14 +1,13 @@
 use crate::grid::Grid;
 use crate::solvers::Solver;
-use crate::{Cell, Position};
+use crate::Cell;
 
 pub const HIDDEN_PAIR: Solver = Solver::new(
     "Hidden Pair",
     "H2",
-    "Two values only showed up in the same 2 cells, removed all other possibilites from those cells",
+    "Two values only showed up in the same 2 cells, removed all other possibilities from those cells",
     solve_hidden_pair,
     step_hidden_pair,
-    solve_hidden_pair_cell,
 );
 pub fn step_hidden_pair(grid: &mut Grid) -> bool {
     for collection in &grid.unsolved_groups {
@@ -57,7 +56,4 @@ fn solve_hidden_pair_collection_set(cells: &mut [Cell; 81], collection: &Vec<Vec
         }
     }
     dirty
-}
-fn solve_hidden_pair_cell(grid: &mut Grid, pos: Position) -> bool {
-    false
 }

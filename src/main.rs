@@ -22,6 +22,9 @@ struct Position {
 }
 impl Position {
     const fn new(row: usize, col: usize) -> Position {
+        if row > 8 || col > 8 {
+            panic!("Position out of bounds");
+        }
         Position { row, col }
     }
     const fn region(&self) -> (usize, usize) {
@@ -35,6 +38,9 @@ impl Position {
             col: index % 9,
             row: index / 9,
         }
+    }
+    const fn get_index(&self) -> usize {
+        self.row * 9 + self.col
     }
 }
 
@@ -94,11 +100,21 @@ impl fmt::Debug for Cell {
 }
 #[allow(dead_code)]
 impl Cell {
-    fn color_card(card: String) -> String {
-        let result = card
-            .split("\n")
-            .map(|x| x.blue().to_string())
-            .collect::<Vec<String>>();
+    fn color_card(&self, card: String) -> String {
+        let result: Vec<String>;
+        if self.is_given {
+            result = card
+                .split("\n")
+                .map(|x| x.green().to_string())
+                .collect::<Vec<String>>();
+        } else if self.is_dirty {
+            result = card
+                .split("\n")
+                .map(|x| x.blue().to_string())
+                .collect::<Vec<String>>();
+        } else {
+            return card;
+        }
         return result.join("\n").to_string();
     }
     pub fn get_print_card(&self) -> String {
@@ -107,9 +123,7 @@ impl Cell {
             base.insert(6, '\n');
             base.insert(3, '\n');
             base = base.replace('-', " ");
-            if self.is_dirty {
-                base = Self::color_card(base);
-            }
+            base = self.color_card(base);
             base
         } else {
             const NUMBERS: [&str; 9] = [
@@ -124,10 +138,7 @@ impl Cell {
                 "┏━┓\n┗━┫\n┗━┛",
             ];
             let result = NUMBERS[self.value as usize - 1];
-            if self.is_dirty {
-                return Self::color_card(result.to_string());
-            }
-            result.to_string()
+            self.color_card(result.to_string())
         }
     }
     pub fn contains_value(&self, value: u8) -> bool {
@@ -228,7 +239,7 @@ enum RunType {
     Generate,
 }
 fn main() {
-    let run_type = RunType::Display;
+    let run_type = RunType::Generate;
     //let test = tests::rule_tests::HIDDEN_PAIR;
     let test = tests::hard_tests::TEST_7;
     //let test = tests::medium_tests::TEST_1;
@@ -279,6 +290,7 @@ fn main() {
             println!("Create Time: {:?}", start_time.elapsed());
 
             println!("{}", grid);
+            //solvers::solve_async(&mut grid);
         }
     }
 }

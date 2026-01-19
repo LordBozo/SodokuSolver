@@ -3,28 +3,50 @@ use colored::{Color, Colorize};
 use std::fmt;
 use std::fmt::Formatter;
 
-#[derive(Clone)]
 pub struct Grid {
     pub cells: [Cell; 81],
-    pub solution: Option<[[u8; 9]; 9]>,
     pub starting_cell_count: usize,
     pub unsolved_groups: [Vec<Vec<usize>>; 3],
     pub auto_promote: bool,
 }
+impl Clone for Grid {
+    fn clone(&self) -> Grid {
+        let mut new_grid = Self::new();
+        for r in 0..9 {
+            for c in 0..9 {
+                let pos = Position::new(r, c);
+                let value = self.cells[pos.get_index()].value;
+                if value > 0 {
+                    new_grid.set_cell(pos, value);
+                }
+            }
+        }
+        new_grid
+    }
+}
+
 // region Getters
+#[allow(unused)]
 impl Grid {
-    fn get_mut_cell(&mut self, location: Position) -> Option<&mut Cell> {
-        if location.row > 8 || location.col > 8 {
+    pub fn get_cell(&self, pos: Position) -> Option<&Cell> {
+        if pos.row > 8 || pos.col > 8 {
             return None;
         }
-        Some(&mut self.cells[location.row * 9 + location.col])
+        Some(&self.cells[pos.get_index()])
     }
-    fn get_cell_unchecked(&self, location: Position) -> &Cell {
-        &self.cells[location.row * 9 + location.col]
+    pub fn get_mut_cell(&mut self, pos: Position) -> Option<&mut Cell> {
+        if pos.row > 8 || pos.col > 8 {
+            return None;
+        }
+        Some(&mut self.cells[pos.get_index()])
     }
+    pub fn get_cell_unchecked(&self, pos: Position) -> &Cell {
+        &self.cells[pos.get_index()]
+    }
+
     #[allow(dead_code)]
-    pub fn get_mut_cell_unchecked(&mut self, location: Position) -> &mut Cell {
-        &mut self.cells[location.row * 9 + location.col]
+    pub fn get_mut_cell_unchecked(&mut self, pos: Position) -> &mut Cell {
+        &mut self.cells[pos.get_index()]
     }
     #[allow(dead_code)]
     pub fn get_percent(&self) -> f32 {
@@ -67,9 +89,26 @@ impl Grid {
                 }
             }
         }
-        grid.solution = answer;
         grid.starting_cell_count = starting_cell_count;
         grid
+    }
+    pub fn copy_grid(&self, copy_answer: bool, auto_promote: bool) -> Grid {
+        let mut new_grid = Self::new();
+        new_grid.auto_promote = auto_promote;
+        for r in 0..9 {
+            for c in 0..9 {
+                let pos = Position::new(r, c);
+                let index = pos.get_index();
+                let value = self.cells[index].value;
+                if value > 0 {
+                    new_grid.set_cell(pos, value);
+                }
+                if copy_answer {
+                    new_grid.cells[index].answer = self.cells[index].answer;
+                }
+            }
+        }
+        new_grid
     }
 
     pub fn new() -> Grid {
@@ -87,7 +126,6 @@ impl Grid {
         let unsolved_groups = [rows, cols, regs];
         Grid {
             cells,
-            solution: None,
             starting_cell_count: 0,
             unsolved_groups,
             auto_promote: true,
@@ -97,14 +135,15 @@ impl Grid {
 // endregion Init
 
 impl Grid {
-    pub fn set_cell(&mut self, location: Position, value: u8) {
-        let cell = self.get_mut_cell(location.clone());
+    pub fn set_cell(&mut self, pos: Position, value: u8) {
+        let cell = self.get_mut_cell(pos.clone());
         if cell.is_none() {
             return;
         }
         let cell = cell.unwrap();
         if cell.value != 0 {
             if cell.value != value {
+                println!("{}", self);
                 panic!("Overwriting existing cell!");
             }
             return;
@@ -114,8 +153,47 @@ impl Grid {
             panic!("INVALID SET CELL");
         }
         cell.set_value(value);
-        self.remove_seen_candidates(location);
-        //self.remove_unsolved_cell(location.row * 9 + location.col)
+        self.remove_seen_candidates(pos);
+        //self.remove_unsolved_cell(pos.row * 9 + pos.col)
+    }
+    pub fn get_cell_groups(pos: Position) -> Vec<&'static [usize; 9]> {
+        let region = Position::region(&pos).0;
+        vec![&COLS[pos.col], &ROWS[pos.row], &REGS[region]]
+    }
+    pub fn unset_cell(&mut self, pos: Position) {
+        let cell = self.get_mut_cell(pos);
+        if cell.is_none() {
+            return;
+        }
+        let cell = cell.unwrap();
+        cell.value = 0;
+        cell.candidates = 0b111_111_111;
+        cell.is_dirty = true;
+        self.force_update_candidates(pos);
+
+        let groups = Self::get_cell_groups(pos);
+        for group in groups {
+            for cell in *group {
+                self.force_update_candidates(Position::from_index(cell));
+            }
+        }
+    }
+    fn force_update_candidates(&mut self, pos: Position) {
+        let cell_index = pos.get_index();
+        let mut candidates = 0b111_111_111;
+        let groups = Self::get_cell_groups(pos);
+        for group in groups {
+            for other_index in *group {
+                if other_index == cell_index {
+                    continue;
+                }
+                let cell = self.cells[other_index];
+                if cell.value != 0 {
+                    candidates &= !(1 << (cell.value - 1));
+                }
+            }
+        }
+        self.cells[cell_index].candidates = candidates;
     }
     #[allow(dead_code)]
     fn remove_unsolved_cell(&mut self, index: usize) {
@@ -126,12 +204,12 @@ impl Grid {
                 .for_each(|cells| cells.retain(|x| *x != index))
         });
     }
-    pub fn remove_seen_candidates(&mut self, location: Position) {
-        let index = location.row * 9 + location.col;
+    pub fn remove_seen_candidates(&mut self, pos: Position) {
+        let index = pos.row * 9 + pos.col;
         let value = self.cells[index].value;
-        self.remove_seen_candidate_group(&COLS[location.col], index, value);
-        self.remove_seen_candidate_group(&ROWS[location.row], index, value);
-        let region = location.region();
+        self.remove_seen_candidate_group(&COLS[pos.col], index, value);
+        self.remove_seen_candidate_group(&ROWS[pos.row], index, value);
+        let region = pos.region();
         self.remove_seen_candidate_group(&REGS[region.0], index, value);
     }
     fn remove_seen_candidate_group(&mut self, group: &[usize; 9], index: usize, value: u8) {
@@ -200,7 +278,6 @@ impl Grid {
 }
 impl fmt::Display for Grid {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let highlight = Position::new(0, 1);
         let mut accumulate = "".to_string();
         accumulate += "";
         let mut lines: Vec<String> = Vec::with_capacity(40);
