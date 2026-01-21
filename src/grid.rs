@@ -1,13 +1,23 @@
-use crate::{Cell, Position, COLS, REGS, ROWS};
+use crate::cell::Cell;
+use crate::{Position, COLS, REGS, ROWS};
 use colored::{Color, Colorize};
+use std::cmp::PartialEq;
 use std::fmt;
 use std::fmt::Formatter;
+#[derive(PartialEq)]
+enum BoardState {
+    Invalid,
+    Constructing,
+    Solving,
+    Solved,
+}
 
 pub struct Grid {
     pub cells: [Cell; 81],
     pub starting_cell_count: usize,
     pub unsolved_groups: [Vec<Vec<usize>>; 3],
     pub auto_promote: bool,
+    current_state: BoardState,
 }
 impl Clone for Grid {
     fn clone(&self) -> Grid {
@@ -64,19 +74,23 @@ impl Grid {
 // endregion Getters
 // region Init
 impl Grid {
-    pub fn from_string(input: &str, answer: Option<[[u8; 9]; 9]>) -> Grid {
+    pub fn from_string(input: &str, answer: Option<[[u8; 9]; 9]>) -> Option<Grid> {
         let mut grid = Grid::new();
+        grid.current_state = BoardState::Constructing;
         let mut starting_cell_count = 0;
-        for (row, line) in input.lines().enumerate() {
+        'rowloop: for (row, line) in input.lines().enumerate() {
             for (col, cell_value) in line.chars().enumerate() {
                 if cell_value == ' ' || cell_value == '0' {
                     continue;
                 }
                 starting_cell_count += 1;
-                grid.set_cell(
-                    Position { row, col },
-                    cell_value.to_digit(10).unwrap() as u8,
-                );
+                let digit = cell_value.to_digit(10);
+                if digit.is_none() {
+                    grid.current_state = BoardState::Invalid;
+                    break 'rowloop;
+                }
+                let digit = digit.unwrap();
+                grid.set_cell(Position { row, col }, digit as u8);
                 grid.get_mut_cell_unchecked(Position { row, col }).is_given = true;
             }
         }
@@ -90,7 +104,11 @@ impl Grid {
             }
         }
         grid.starting_cell_count = starting_cell_count;
-        grid
+        if grid.current_state == BoardState::Invalid {
+            return None;
+        }
+        grid.current_state = BoardState::Solving;
+        Some(grid)
     }
     pub fn copy_grid(&self, copy_answer: bool, auto_promote: bool) -> Grid {
         let mut new_grid = Self::new();
@@ -129,6 +147,7 @@ impl Grid {
             starting_cell_count: 0,
             unsolved_groups,
             auto_promote: true,
+            current_state: BoardState::Constructing,
         }
     }
 }
@@ -136,21 +155,24 @@ impl Grid {
 
 impl Grid {
     pub fn set_cell(&mut self, pos: Position, value: u8) {
-        let cell = self.get_mut_cell(pos.clone());
-        if cell.is_none() {
-            return;
-        }
-        let cell = cell.unwrap();
+        let cell = &mut self.cells[pos.get_index()];
         if cell.value != 0 {
             if cell.value != value {
-                println!("{}", self);
-                panic!("Overwriting existing cell!");
+                if self.current_state == BoardState::Solving {
+                    panic!("Overwriting existing cell!");
+                } else if self.current_state == BoardState::Constructing {
+                    self.current_state = BoardState::Invalid;
+                }
             }
             return;
         }
         if cell.candidates & (1 << (value - 1)) == 0 {
-            // If this value isn't a possible value, panic
-            panic!("INVALID SET CELL");
+            if self.current_state == BoardState::Solving {
+                // If this value isn't a possible value, panic
+                panic!("INVALID SET CELL");
+            } else if self.current_state == BoardState::Constructing {
+                self.current_state = BoardState::Invalid;
+            }
         }
         cell.set_value(value);
         self.remove_seen_candidates(pos);

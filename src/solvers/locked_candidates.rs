@@ -1,6 +1,7 @@
+use crate::cell::Cell;
 use crate::grid::Grid;
 use crate::solvers::Solver;
-use crate::{Cell, GroupType, Position, COLS, REGS, ROWS};
+use crate::{GroupType, Position, COLS, REGS, ROWS};
 use std::collections::HashSet;
 
 pub const LOCKED_CANDIDATES: Solver = Solver::new(

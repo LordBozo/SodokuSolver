@@ -76,6 +76,7 @@ pub fn solve_async(grid: &mut Grid) {
             }
         }
     }
+    clear().expect("");
     println!("{}", grid);
 }
 pub struct Solver {

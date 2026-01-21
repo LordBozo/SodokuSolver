@@ -1,6 +1,6 @@
+use crate::cell::Cell;
 use crate::grid::Grid;
 use crate::solvers::Solver;
-use crate::Cell;
 
 pub const HIDDEN_PAIR: Solver = Solver::new(
     "Hidden Pair",

@@ -1,6 +1,6 @@
+use crate::cell::Cell;
 use crate::grid::Grid;
 use crate::solvers::Solver;
-use crate::Cell;
 
 pub const NAKED_PAIR: Solver = Solver::new(
     "Naked Pair",

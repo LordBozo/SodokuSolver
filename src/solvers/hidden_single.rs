@@ -1,6 +1,7 @@
+use crate::cell::Cell;
 use crate::grid::Grid;
 use crate::solvers::Solver;
-use crate::{Cell, Position};
+use crate::Position;
 
 pub const HIDDEN_SINGLE: Solver = Solver::new(
     "Hidden Single",
@@ -72,7 +73,7 @@ fn solve_hidden_single_collection(
 #[allow(unused)]
 fn solve_hidden_single_cell(grid: &Grid, pos: Position) -> Option<u8> {
     let cell_index = pos.get_index();
-    let possibilities = grid.get_cell_unchecked(pos).get_possibilities();
+    let possibilities = grid.cells[pos.get_index()].get_possibilities();
     let groups = Grid::get_cell_groups(pos);
     for group in groups {
         let mut candidate_clone = possibilities.clone();

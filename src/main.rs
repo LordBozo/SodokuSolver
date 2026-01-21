@@ -1,13 +1,16 @@
+mod cell;
 mod generator;
 mod grid;
 mod sodoku_output;
 mod solvers;
 mod tests;
+
 use crate::grid::Grid;
 use crate::tests::Test;
-use colored::Colorize;
-use std::fmt;
-use std::fmt::Formatter;
+use clearscreen::clear;
+use std::env::args;
+use std::fmt::Debug;
+use std::io::stdin;
 
 #[allow(dead_code)]
 enum GroupType {
@@ -72,164 +75,21 @@ static COLLECTIONS: [[[usize; 9]; 9]; 3] = generate_groups();
 static ROWS: &[[usize; 9]; 9] = &COLLECTIONS[0];
 static COLS: &[[usize; 9]; 9] = &COLLECTIONS[1];
 static REGS: &[[usize; 9]; 9] = &COLLECTIONS[2];
-//static GROUPS: [&[[usize; 9]; 9]; 3] = [&ROWS, &COLS, &REGS];
-#[derive(Copy, Clone)]
-struct Cell {
-    candidates: u16,
-    value: u8,
-    answer: Option<u8>,
-    is_given: bool,
-    is_dirty: bool,
-}
-impl fmt::Debug for Cell {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut candidates = self.candidates;
-        let mut val = 1i8;
-        let mut accumulate = "".to_string();
-        while candidates != 0 {
-            accumulate += &*if (candidates & 1) == 1 {
-                val.to_string()
-            } else {
-                "-".to_string()
-            };
-            candidates >>= 1;
-            val += 1;
-        }
-        write!(f, "{:9}", accumulate)
-    }
-}
-#[allow(dead_code)]
-impl Cell {
-    fn color_card(&self, card: String) -> String {
-        let result: Vec<String>;
-        if self.is_given {
-            result = card
-                .split("\n")
-                .map(|x| x.green().to_string())
-                .collect::<Vec<String>>();
-        } else if self.is_dirty {
-            result = card
-                .split("\n")
-                .map(|x| x.blue().to_string())
-                .collect::<Vec<String>>();
-        } else {
-            return card;
-        }
-        return result.join("\n").to_string();
-    }
-    pub fn get_print_card(&self) -> String {
-        if self.value == 0 {
-            let mut base = format!("{:?}", self);
-            base.insert(6, '\n');
-            base.insert(3, '\n');
-            base = base.replace('-', " ");
-            base = self.color_card(base);
-            base
-        } else {
-            const NUMBERS: [&str; 9] = [
-                " ┓ \n ┃ \n ┻ ",
-                "┏━┓\n┏━┛\n┗━━",
-                "┏━┓\n ━┫\n┗━┛",
-                "╻ ╻\n┗━╋\n  ╹",
-                "┏━╸\n┗━┓\n┗━┛",
-                "┏━┓\n┣━┓\n┗━┛",
-                "╺━┓\n  ┃\n  ╹",
-                "┏━┓\n┣━┫\n┗━┛",
-                "┏━┓\n┗━┫\n┗━┛",
-            ];
-            let result = NUMBERS[self.value as usize - 1];
-            self.color_card(result.to_string())
-        }
-    }
-    pub fn contains_value(&self, value: u8) -> bool {
-        if self.value <= 0 {
-            return (self.candidates & (1 << value - 1)) > 0;
-        }
-        false
-    }
-    pub fn promote_single_candidate(&mut self) -> bool {
-        let mut val = 0u8;
-        let mut possibilities = self.candidates;
-        let mut bits_set = 0;
-        while possibilities != 0 {
-            if (possibilities & 1) == 1 {
-                bits_set += 1;
-            }
-            possibilities >>= 1;
-            val += 1;
-        }
-        if bits_set == 1 {
-            self.set_value(val);
-            return true;
-        }
-        false
-    }
-    fn remove_possibilities(&mut self, bits: u16) -> bool {
-        if bits & self.candidates != 0 {
-            self.candidates &= !bits;
-            self.is_answer_possible();
-            self.is_dirty = true;
-            return true;
-        }
-        false
-    }
-    fn remove_possibility(&mut self, value: u8) {
-        self.candidates &= !(1 << (value - 1));
-        self.is_answer_possible();
-    }
-
-    pub fn is_answer_possible(&self) {
-        if self.answer.is_none() || self.value > 0 {
-            return;
-        }
-        let ans = self.answer.unwrap();
-        if !self.contains_value(ans) {
-            panic!("REMOVED ANSWER AS POSSIBILITY")
-        }
-    }
-    pub fn get_possibilities(&self) -> Vec<u16> {
-        if self.value != 0 {
-            return Vec::new();
-        }
-        let mut possibilities = self.candidates;
-        let mut results = Vec::new();
-        for i in 0..9 {
-            if possibilities & 1 == 1 {
-                results.push(i + 1);
-            }
-            possibilities >>= 1;
-        }
-        results
-    }
-    fn set_value(&mut self, value: u8) {
-        if self.answer.is_some() {
-            if value != self.answer.unwrap() {
-                println!(
-                    "INVALID ANSWER: should be {:?}, is {value}",
-                    self.answer.unwrap()
-                );
-            }
-        }
-        self.value = value;
-        self.candidates = 0;
-        self.is_dirty = true;
-    }
-}
 
 fn run_test(test: Test) {
-    let mut grid = Grid::from_string(test.board, Some(*test.answer));
+    let mut grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
     solvers::solve(&mut grid);
     let percent = grid.get_percent();
     if percent < 1f32 {
-        println!("Failed: {}", percent * 100f32);
+        println!("Failed: {}%", percent * 100f32);
         grid.print_board();
         grid.print_possibilities();
     } else {
         println!("Passed");
     }
-    //grid.solve_hidden_pair();
 }
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
 enum RunType {
     Timing,
     Testing,
@@ -238,27 +98,114 @@ enum RunType {
     NYTimes,
     Generate,
 }
+impl RunType {
+    const ITERATOR: [Self; 3] = [Self::Solving, Self::Generate, Self::Testing];
+    fn parse(input: &str) -> Option<RunType> {
+        let input_lower = input.to_lowercase();
+        let mut starts: Vec<RunType> = Vec::new();
+        let mut overlaps: Vec<RunType> = Vec::new();
+        for run_type in RunType::ITERATOR {
+            let run_string = format!("{:?}", run_type).to_lowercase();
+            if input_lower.eq(&run_string) {
+                return Some(run_type);
+            }
+            if run_string.starts_with(input_lower.as_str()) {
+                starts.push(run_type.clone());
+            }
+            if run_string.contains(input_lower.as_str()) {
+                overlaps.push(run_type);
+            }
+        }
+        if starts.len() == 1 {
+            return Some(starts[0].clone());
+        } else if starts.len() == 0 && overlaps.len() == 1 {
+            return Some(overlaps[0].clone());
+        }
+        None
+    }
+}
+fn input_sodoku_board() -> Grid {
+    loop {
+        clear().expect("Failed to clear screen");
+        println!("Please enter your board");
+        println!("Use 1-9 for known digits, 0 or ' ' can be used for unknown cells");
+        println!("You can use '|' to help space out digits, though they are not necessary");
+        let mut board;
+        loop {
+            board = "".to_string();
+            for i in 0..9 {
+                let mut new_line: String = String::new();
+                stdin()
+                    .read_line(&mut new_line)
+                    .expect("Failed to read line");
+
+                new_line.retain(|c| c != '|');
+                board += new_line.as_str();
+                if i == 2 || i == 5 {
+                    println!("-----------")
+                }
+            }
+            break;
+        }
+        let grid = Grid::from_string(board.as_str(), None);
+        if grid.is_some() {
+            return grid.unwrap();
+        }
+        println!("Failed to parse board");
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+    }
+}
+fn mode_solve() {
+    let mut grid = input_sodoku_board();
+    println!("Would you like to see it step by step? Yes/No");
+    let is_async: bool = loop {
+        let mut answer: String = String::new();
+        stdin().read_line(&mut answer).expect("Failed to read line");
+        let start = answer.chars().nth(0).unwrap();
+        if start == 'n' || start == 'N' {
+            break false;
+        } else if start == 'y' || start == 'Y' {
+            break true;
+        }
+    };
+    if is_async {
+        solvers::solve_async(&mut grid);
+    } else {
+        solvers::solve(&mut grid);
+    }
+}
 fn main() {
-    let run_type = RunType::Generate;
-    //let test = tests::rule_tests::HIDDEN_PAIR;
+    clear().expect("Failed to clear screen");
+    let args = args();
+    for arg in args.skip(1) {
+        println!("{:?}", arg);
+    }
+    let run_type;
+    loop {
+        println!("Select Sodoku Mode: Solve, Generate, Testing");
+        let mut mode: String = String::new();
+        stdin().read_line(&mut mode).expect("Failed to read line");
+        let mode = RunType::parse(mode.trim());
+        if mode.is_some() {
+            run_type = mode.unwrap();
+            break;
+        }
+    }
+
     let test = tests::hard_tests::TEST_7;
-    //let test = tests::medium_tests::TEST_1;
-    //let test = tests::easy_tests::TEST_2;
     match run_type {
         RunType::Timing => {
             let mut grid: Grid;
             const ITERATIONS: usize = 10000;
             let start_time = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                grid = Grid::from_string(test.board, Some(*test.answer));
+                grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
                 solvers::solve(&mut grid);
             }
             println!("Solve Time: {:?}", start_time.elapsed() / ITERATIONS as u32);
         }
         RunType::Solving => {
-            let mut grid = Grid::from_string(test.board, None);
-            solvers::solve(&mut grid);
-            println!("{}", grid);
+            mode_solve();
         }
         RunType::Testing => {
             println!("Completed Tests:");
@@ -272,13 +219,13 @@ fn main() {
         }
 
         RunType::Display => {
-            let mut grid = Grid::from_string(test.board, None);
+            let mut grid = Grid::from_string(test.board, None).unwrap();
             solvers::solve_async(&mut grid);
         }
 
         RunType::NYTimes => {
             std::thread::sleep(std::time::Duration::from_millis(2000));
-            let mut grid = Grid::from_string(test.board, None);
+            let mut grid = Grid::from_string(test.board, None).unwrap();
             solvers::solve(&mut grid);
             let start_time = std::time::Instant::now();
             sodoku_output::send_input(grid);
