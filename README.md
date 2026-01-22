@@ -1,7 +1,7 @@
 # Using
-Any text prompt either accepts the whole word, or any truncated version
+Any text prompt either accepts the whole word, or any abbreviated version
 
-ex. Solve accepts Solve, Solv, S, and s, but does not accept olve
+ex. Solve accepts Solve, Solv, S, and s
 # Modes
 ## Solving
 Input a sodoku board, using 0 or space for unknown cells
