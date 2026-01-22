@@ -11,6 +11,9 @@ use crate::solvers::locked_candidates::LOCKED_CANDIDATES;
 use crate::solvers::naked_pair::NAKED_PAIR;
 use crate::solvers::naked_single::NAKED_SINGLE;
 use clearscreen::clear;
+use crossterm::{cursor, style, terminal, ExecutableCommand, QueueableCommand};
+use std::io;
+use std::io::{Stdout, Write};
 
 pub const SOLVERS: [&Solver; 5] = [
     &NAKED_SINGLE,
@@ -57,8 +60,11 @@ pub fn solve(grid: &mut Grid) {
     }
 }
 pub fn solve_async(grid: &mut Grid) {
+    let mut stdout = io::stdout();
     let mut dirty = true;
+    clear().expect("");
     grid.auto_promote = false;
+    stdout.queue(cursor::DisableBlinking).unwrap();
     while dirty {
         dirty = false;
         grid.clear_dirty();
@@ -67,17 +73,30 @@ pub fn solve_async(grid: &mut Grid) {
             let func = step.step_function;
             dirty |= func(grid);
             if dirty {
-                clear().expect("TODO: panic message");
-                println!("{}", grid);
-                println!("{}: {}", step.name, step.description);
-
+                print_and_flush_grid_changes(&mut stdout, grid, Some(step));
                 std::thread::sleep(std::time::Duration::from_millis(1000));
                 break;
             }
         }
     }
-    clear().expect("");
-    println!("{}", grid);
+    print_and_flush_grid_changes(&mut stdout, grid, None);
+    println!();
+    println!();
+    println!();
+}
+fn print_and_flush_grid_changes(stdout: &mut Stdout, grid: &mut Grid, step: Option<&Solver>) {
+    print!("{}", cursor::MoveTo(0, 0));
+    let board = format!("{}\n", grid);
+    stdout.queue(style::Print(board)).unwrap();
+    stdout
+        .queue(terminal::Clear(terminal::ClearType::FromCursorDown))
+        .unwrap();
+    if step.is_some() {
+        let step = step.unwrap();
+        let step = format!("{}: {}", step.name, step.description);
+        stdout.queue(style::Print(step)).unwrap();
+    }
+    stdout.flush().unwrap();
 }
 pub struct Solver {
     pub name: &'static str,

@@ -4,7 +4,6 @@ mod grid;
 mod sodoku_output;
 mod solvers;
 mod tests;
-
 use crate::grid::Grid;
 use crate::tests::Test;
 use clearscreen::clear;
@@ -91,15 +90,15 @@ fn run_test(test: Test) {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum RunType {
-    Timing,
-    Testing,
-    Solving,
+    Solve,
+    Generate,
+    Test,
+    Time,
     Display,
     NYTimes,
-    Generate,
 }
 impl RunType {
-    const ITERATOR: [Self; 3] = [Self::Solving, Self::Generate, Self::Testing];
+    const ITERATOR: [Self; 3] = [Self::Solve, Self::Generate, Self::Test];
     fn parse(input: &str) -> Option<RunType> {
         let input_lower = input.to_lowercase();
         let mut starts: Vec<RunType> = Vec::new();
@@ -194,20 +193,18 @@ fn main() {
 
     let test = tests::hard_tests::TEST_7;
     match run_type {
-        RunType::Timing => {
-            let mut grid: Grid;
-            const ITERATIONS: usize = 10000;
-            let start_time = std::time::Instant::now();
-            for _ in 0..ITERATIONS {
-                grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
-                solvers::solve(&mut grid);
-            }
-            println!("Solve Time: {:?}", start_time.elapsed() / ITERATIONS as u32);
-        }
-        RunType::Solving => {
+        RunType::Solve => {
             mode_solve();
         }
-        RunType::Testing => {
+        RunType::Generate => {
+            let start_time = std::time::Instant::now();
+            let grid = generator::create_board();
+            println!("Create Time: {:?}", start_time.elapsed());
+
+            println!("{}", grid);
+            //solvers::solve_async(&mut grid);
+        }
+        RunType::Test => {
             println!("Completed Tests:");
             for i in tests::all_tests::ALL_SOLVED_TESTS {
                 run_test(i);
@@ -222,7 +219,16 @@ fn main() {
             let mut grid = Grid::from_string(test.board, None).unwrap();
             solvers::solve_async(&mut grid);
         }
-
+        RunType::Time => {
+            let mut grid: Grid;
+            const ITERATIONS: usize = 10000;
+            let start_time = std::time::Instant::now();
+            for _ in 0..ITERATIONS {
+                grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
+                solvers::solve(&mut grid);
+            }
+            println!("Solve Time: {:?}", start_time.elapsed() / ITERATIONS as u32);
+        }
         RunType::NYTimes => {
             std::thread::sleep(std::time::Duration::from_millis(2000));
             let mut grid = Grid::from_string(test.board, None).unwrap();
@@ -230,14 +236,6 @@ fn main() {
             let start_time = std::time::Instant::now();
             sodoku_output::send_input(grid);
             println!("Solve Time: {:?}", start_time.elapsed());
-        }
-        RunType::Generate => {
-            let start_time = std::time::Instant::now();
-            let grid = generator::create_board();
-            println!("Create Time: {:?}", start_time.elapsed());
-
-            println!("{}", grid);
-            //solvers::solve_async(&mut grid);
         }
     }
 }
