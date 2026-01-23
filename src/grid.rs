@@ -4,6 +4,7 @@ use colored::{Color, Colorize};
 use std::cmp::PartialEq;
 use std::fmt;
 use std::fmt::Formatter;
+#[allow(unused)]
 #[derive(PartialEq)]
 enum BoardState {
     Invalid,

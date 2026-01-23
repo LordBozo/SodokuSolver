@@ -4,13 +4,39 @@ mod grid;
 mod sodoku_output;
 mod solvers;
 mod tests;
+
 use crate::grid::Grid;
 use crate::tests::Test;
 use clearscreen::clear;
+use std::collections::HashMap;
 use std::env::args;
 use std::fmt::Debug;
 use std::io::stdin;
 
+struct CommandArgs {
+    arg_map: HashMap<String, String>,
+}
+impl CommandArgs {
+    fn new() -> CommandArgs {
+        let mut arg_map: HashMap<String, String> = Default::default();
+        for arg in args().skip(1) {
+            let sides = arg.split_once("=");
+            if sides.is_none() {
+                arg_map.insert(arg.clone(), "".to_string());
+            } else {
+                let (key, value) = sides.unwrap();
+                arg_map.insert(key.to_string(), value.to_string());
+            }
+        }
+        CommandArgs { arg_map }
+    }
+    fn get_arg(&self, key: &str) -> Option<&String> {
+        self.arg_map.get(key)
+    }
+    fn has_arg(&self, key: &str) -> bool {
+        self.arg_map.contains_key(key)
+    }
+}
 #[allow(dead_code)]
 enum GroupType {
     Rows,
@@ -45,6 +71,16 @@ impl Position {
         self.row * 9 + self.col
     }
 }
+fn parse_yes_no(input: &str) -> Option<bool> {
+    let mut start = input.chars().nth(0).unwrap();
+    start = start.to_ascii_lowercase();
+    if start == 'n' || start == 'f' {
+        return Some(false);
+    } else if start == 'y' || start == 't' {
+        return Some(true);
+    }
+    None
+}
 
 const fn generate_groups() -> [[[usize; 9]; 9]; 3] {
     let mut rows: [[usize; 9]; 9] = [[0; 9]; 9];
@@ -75,9 +111,9 @@ static ROWS: &[[usize; 9]; 9] = &COLLECTIONS[0];
 static COLS: &[[usize; 9]; 9] = &COLLECTIONS[1];
 static REGS: &[[usize; 9]; 9] = &COLLECTIONS[2];
 
-fn run_test(test: Test) {
+fn run_test(test: Test, arguments: &CommandArgs) {
     let mut grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
-    solvers::solve(&mut grid);
+    solvers::solve(&mut grid, &arguments);
     let percent = grid.get_percent();
     if percent < 1f32 {
         println!("Failed: {}%", percent * 100f32);
@@ -85,6 +121,34 @@ fn run_test(test: Test) {
         grid.print_possibilities();
     } else {
         println!("Passed");
+    }
+}
+fn query_args_or_user<P, T>(
+    prompt: &str,
+    failure_message: &str,
+    arg_flag: &str,
+    arguments: &CommandArgs,
+    mut validity_test: P,
+) -> (String, T)
+where
+    P: FnMut(&str) -> Option<T>,
+{
+    let arg = arguments.get_arg(arg_flag);
+    if arg.is_some() {
+        let validity = validity_test(arg.unwrap());
+        if validity.is_some() {
+            return (arg.unwrap().to_string(), validity.unwrap());
+        }
+        println!("{}", failure_message);
+    }
+    loop {
+        println!("{}", prompt);
+        let mut result = String::new();
+        stdin().read_line(&mut result).expect("Failed to read line");
+        let validity = validity_test(&*result);
+        if validity.is_some() {
+            return (result, validity.unwrap());
+        }
     }
 }
 #[allow(dead_code)]
@@ -123,9 +187,31 @@ impl RunType {
         None
     }
 }
-fn input_sodoku_board() -> Grid {
+fn print_help() {
+    println!("-h: Prints this help section");
+    println!(
+        "-m: Selects what mode to run in, valid inputs are any abbreviated version of Solve, Generate, or Test"
+    );
+    println!(
+        "-b: The board to use in Solve mode, spaces or 0s can be used for unknown cells, use \\n for line breaks, surround in quotes"
+    );
+    println!("-t: Choose whether or not to show how to solve a board in solve mode, yes/no ");
+    println!(
+        "-a: If using -t, this determines whether to auto-advance, or wait for using input, yes/no "
+    );
+}
+fn input_sodoku_board(arguments: &CommandArgs) -> Grid {
+    clear().expect("Failed to clear screen");
+    let arg_board = arguments.get_arg("-b");
+    if arg_board.is_some() {
+        let arg_board = arg_board.unwrap().replace("\\n", "\n");
+        let grid = Grid::from_string(arg_board.as_str(), None);
+        if grid.is_some() {
+            return grid.unwrap();
+        }
+        println!("Failed to parse passed in board");
+    }
     loop {
-        clear().expect("Failed to clear screen");
         println!("Please enter your board");
         println!("Use 1-9 for known digits, 0 or ' ' can be used for unknown cells");
         println!("You can use '|' to help space out digits, though they are not necessary");
@@ -152,72 +238,73 @@ fn input_sodoku_board() -> Grid {
         }
         println!("Failed to parse board");
         std::thread::sleep(std::time::Duration::from_millis(1000));
+        clear().expect("Failed to clear screen");
     }
 }
-fn mode_solve() {
-    let mut grid = input_sodoku_board();
-    println!("Would you like to see it step by step? Yes/No");
-    let is_async: bool = loop {
-        let mut answer: String = String::new();
-        stdin().read_line(&mut answer).expect("Failed to read line");
-        let start = answer.chars().nth(0).unwrap();
-        if start == 'n' || start == 'N' {
-            break false;
-        } else if start == 'y' || start == 'Y' {
-            break true;
-        }
-    };
+fn select_mode(arguments: &CommandArgs) -> RunType {
+    let (_, run_type) = query_args_or_user(
+        "Select Sodoku Mode: Solve, Generate, Test",
+        "Invalid Mode",
+        "-m",
+        arguments,
+        |x| RunType::parse(x.trim()),
+    );
+    run_type
+}
+fn mode_solve(arguments: &CommandArgs) {
+    let mut grid = input_sodoku_board(arguments);
+    let (_, is_async) = query_args_or_user(
+        "Would you like to see it step by step? Yes/No",
+        "Invalid input",
+        "-t",
+        arguments,
+        |x| parse_yes_no(x),
+    );
     if is_async {
-        solvers::solve_async(&mut grid);
+        solvers::solve_async(&mut grid, arguments);
     } else {
-        solvers::solve(&mut grid);
+        solvers::solve(&mut grid, arguments);
     }
+}
+fn mode_generate(_arguments: &CommandArgs) {
+    let start_time = std::time::Instant::now();
+    let grid = generator::create_board();
+    println!("Create Time: {:?}", start_time.elapsed());
+
+    println!("{}", grid);
 }
 fn main() {
+    let arguments: CommandArgs = CommandArgs::new();
     clear().expect("Failed to clear screen");
-    let args = args();
-    for arg in args.skip(1) {
-        println!("{:?}", arg);
-    }
-    let run_type;
-    loop {
-        println!("Select Sodoku Mode: Solve, Generate, Testing");
-        let mut mode: String = String::new();
-        stdin().read_line(&mut mode).expect("Failed to read line");
-        let mode = RunType::parse(mode.trim());
-        if mode.is_some() {
-            run_type = mode.unwrap();
-            break;
-        }
+    if arguments.has_arg("-h") || arguments.has_arg("-help") {
+        print_help();
+        return;
     }
 
+    let run_type = select_mode(&arguments);
     let test = tests::hard_tests::TEST_7;
     match run_type {
         RunType::Solve => {
-            mode_solve();
+            mode_solve(&arguments);
         }
         RunType::Generate => {
-            let start_time = std::time::Instant::now();
-            let grid = generator::create_board();
-            println!("Create Time: {:?}", start_time.elapsed());
-
-            println!("{}", grid);
+            mode_generate(&arguments)
             //solvers::solve_async(&mut grid);
         }
         RunType::Test => {
             println!("Completed Tests:");
             for i in tests::all_tests::ALL_SOLVED_TESTS {
-                run_test(i);
+                run_test(i, &arguments);
             }
             println!("Uncompleted Tests:");
             for i in tests::all_tests::ALL_UNSOLVED_TESTS {
-                run_test(i);
+                run_test(i, &arguments);
             }
         }
 
         RunType::Display => {
             let mut grid = Grid::from_string(test.board, None).unwrap();
-            solvers::solve_async(&mut grid);
+            solvers::solve_async(&mut grid, &arguments);
         }
         RunType::Time => {
             let mut grid: Grid;
@@ -225,14 +312,14 @@ fn main() {
             let start_time = std::time::Instant::now();
             for _ in 0..ITERATIONS {
                 grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
-                solvers::solve(&mut grid);
+                solvers::solve(&mut grid, &arguments);
             }
             println!("Solve Time: {:?}", start_time.elapsed() / ITERATIONS as u32);
         }
         RunType::NYTimes => {
             std::thread::sleep(std::time::Duration::from_millis(2000));
             let mut grid = Grid::from_string(test.board, None).unwrap();
-            solvers::solve(&mut grid);
+            solvers::solve(&mut grid, &arguments);
             let start_time = std::time::Instant::now();
             sodoku_output::send_input(grid);
             println!("Solve Time: {:?}", start_time.elapsed());

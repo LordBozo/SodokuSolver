@@ -10,10 +10,11 @@ use crate::solvers::hidden_single::HIDDEN_SINGLE;
 use crate::solvers::locked_candidates::LOCKED_CANDIDATES;
 use crate::solvers::naked_pair::NAKED_PAIR;
 use crate::solvers::naked_single::NAKED_SINGLE;
+use crate::{parse_yes_no, query_args_or_user, CommandArgs};
 use clearscreen::clear;
-use crossterm::{cursor, style, terminal, ExecutableCommand, QueueableCommand};
+use crossterm::{cursor, style, terminal, QueueableCommand};
 use std::io;
-use std::io::{Stdout, Write};
+use std::io::{stdin, Stdout, Write};
 
 pub const SOLVERS: [&Solver; 5] = [
     &NAKED_SINGLE,
@@ -45,7 +46,7 @@ pub fn get_solvers(filter: &str) -> Vec<&'static Solver> {
     }
     solvers
 }
-pub fn solve(grid: &mut Grid) {
+pub fn solve(grid: &mut Grid, arguments: &CommandArgs) {
     let mut dirty = true;
     while dirty {
         dirty = false;
@@ -58,8 +59,17 @@ pub fn solve(grid: &mut Grid) {
             }
         }
     }
+    print_and_flush_grid_changes(&mut io::stdout(), grid, None);
 }
-pub fn solve_async(grid: &mut Grid) {
+pub fn solve_async(grid: &mut Grid, arguments: &CommandArgs) {
+    let (_, should_auto_advance) = query_args_or_user(
+        "Auto Advance? Yes/No",
+        "Invalid input",
+        "-a",
+        arguments,
+        |x| parse_yes_no(x),
+    );
+
     let mut stdout = io::stdout();
     let mut dirty = true;
     clear().expect("");
@@ -74,7 +84,13 @@ pub fn solve_async(grid: &mut Grid) {
             dirty |= func(grid);
             if dirty {
                 print_and_flush_grid_changes(&mut stdout, grid, Some(step));
-                std::thread::sleep(std::time::Duration::from_millis(1000));
+                if should_auto_advance {
+                    std::thread::sleep(std::time::Duration::from_millis(1000));
+                } else {
+                    stdin()
+                        .read_line(&mut Default::default())
+                        .expect("Failed to read line");
+                }
                 break;
             }
         }
