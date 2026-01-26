@@ -6,12 +6,14 @@ mod solvers;
 mod tests;
 
 use crate::grid::Grid;
+use crate::solvers::{get_solvers, Solver, SOLVERS};
 use crate::tests::Test;
 use clearscreen::clear;
 use std::collections::HashMap;
 use std::env::args;
 use std::fmt::Debug;
 use std::io::stdin;
+use std::ops::Add;
 
 struct CommandArgs {
     arg_map: HashMap<String, String>,
@@ -149,6 +151,7 @@ where
         if validity.is_some() {
             return (result, validity.unwrap());
         }
+        println!("{}", failure_message);
     }
 }
 #[allow(dead_code)]
@@ -187,6 +190,8 @@ impl RunType {
         None
     }
 }
+
+// TODO: add help section to readme
 fn print_help() {
     println!("-h: Prints this help section");
     println!(
@@ -266,9 +271,39 @@ fn mode_solve(arguments: &CommandArgs) {
         solvers::solve(&mut grid, arguments);
     }
 }
-fn mode_generate(_arguments: &CommandArgs) {
+fn construct_codes() -> String {
+    let mut string: String = Default::default();
+    for solver in SOLVERS {
+        if solver.abbreviation == "N1" {
+            continue;
+        }
+        let format = format!("{}: {}\n", solver.abbreviation, solver.name);
+        string = string.add(&format);
+    }
+    string.trim_end().to_string()
+}
+fn try_get_solvers(string: String) -> Option<Vec<&'static Solver>> {
+    let input = if !string.is_empty() && !string.contains("N1") {
+        String::from("N1").add(string.as_str())
+    } else {
+        string
+    };
+    let solvers = get_solvers(input.as_str());
+    // Maybe add check later to ensure it has Naked Single?
+    Some(solvers)
+}
+fn mode_generate(arguments: &CommandArgs) {
     let start_time = std::time::Instant::now();
-    let grid = generator::create_board();
+    let codes = construct_codes();
+    let prompt = format!(
+        "Which Rules would you like to enable? Empty means all rules are allowed\n{}\nExample: N1H1N2",
+        codes
+    );
+    let (args, solvers) =
+        query_args_or_user(prompt.as_str(), "Invalid input", "-g", arguments, |x| {
+            try_get_solvers(x.to_string())
+        });
+    let grid = generator::create_board(solvers);
     println!("Create Time: {:?}", start_time.elapsed());
 
     println!("{}", grid);

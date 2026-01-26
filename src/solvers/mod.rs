@@ -35,18 +35,14 @@ pub fn get_solvers(filter: &str) -> Vec<&'static Solver> {
         return SOLVERS.to_vec();
     }
     let mut solvers = Vec::new();
-    for i in (0..filter.len()).step_by(2) {
-        let flag = &filter[i..i + 2];
-        for solver in SOLVERS {
-            if solver.abbreviation == flag {
-                solvers.push(solver);
-                break;
-            }
+    for solver in SOLVERS {
+        if filter.contains(solver.abbreviation) {
+            solvers.push(solver);
         }
     }
     solvers
 }
-pub fn solve(grid: &mut Grid, arguments: &CommandArgs) {
+pub fn solve(grid: &mut Grid, _arguments: &CommandArgs) {
     let mut dirty = true;
     while dirty {
         dirty = false;

@@ -1,5 +1,5 @@
 use crate::grid::Grid;
-use crate::solvers::{get_solvers, Solver};
+use crate::solvers::Solver;
 use crate::{Position, COLS, ROWS};
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -28,12 +28,11 @@ impl SolveDifficulty {
 ///
 ///
 ///
-pub fn create_board() -> Grid {
+pub fn create_board(solvers: Vec<&Solver>) -> Grid {
     // First, fill in the board randomly until its complete
     let mut grid: Grid = Grid::new();
     fill_board(&mut grid);
 
-    let solvers = get_solvers("");
     prune_hard(&mut grid, solvers);
     let mut new_grid = grid.copy_grid(true, false);
     for i in 0..81 {
