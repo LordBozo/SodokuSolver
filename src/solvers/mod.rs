@@ -55,7 +55,6 @@ pub fn solve(grid: &mut Grid, _arguments: &CommandArgs) {
             }
         }
     }
-    print_and_flush_grid_changes(&mut io::stdout(), grid, None);
 }
 pub fn solve_async(grid: &mut Grid, arguments: &CommandArgs) {
     let (_, should_auto_advance) = query_args_or_user(
@@ -91,12 +90,8 @@ pub fn solve_async(grid: &mut Grid, arguments: &CommandArgs) {
             }
         }
     }
-    print_and_flush_grid_changes(&mut stdout, grid, None);
-    println!();
-    println!();
-    println!();
 }
-fn print_and_flush_grid_changes(stdout: &mut Stdout, grid: &mut Grid, step: Option<&Solver>) {
+pub fn print_and_flush_grid_changes(stdout: &mut Stdout, grid: &mut Grid, step: Option<&Solver>) {
     print!("{}", cursor::MoveTo(0, 0));
     let board = format!("{}\n", grid);
     stdout.queue(style::Print(board)).unwrap();

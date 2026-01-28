@@ -6,12 +6,13 @@ mod solvers;
 mod tests;
 
 use crate::grid::Grid;
-use crate::solvers::{get_solvers, Solver, SOLVERS};
+use crate::solvers::{get_solvers, print_and_flush_grid_changes, Solver, SOLVERS};
 use crate::tests::Test;
 use clearscreen::clear;
 use std::collections::HashMap;
 use std::env::args;
 use std::fmt::Debug;
+use std::io;
 use std::io::stdin;
 use std::ops::Add;
 
@@ -268,7 +269,9 @@ fn mode_solve(arguments: &CommandArgs) {
         solvers::solve_async(&mut grid, arguments);
     } else {
         solvers::solve(&mut grid, arguments);
+        clear().expect("Failed to clear screen");
     }
+    print_and_flush_grid_changes(&mut io::stdout(), &mut grid, None);
 }
 fn construct_codes() -> String {
     let mut string: String = Default::default();
