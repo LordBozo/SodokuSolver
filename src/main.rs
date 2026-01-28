@@ -191,7 +191,6 @@ impl RunType {
     }
 }
 
-// TODO: add help section to readme
 fn print_help() {
     println!("-h: Prints this help section");
     println!(
@@ -299,7 +298,7 @@ fn mode_generate(arguments: &CommandArgs) {
         "Which Rules would you like to enable? Empty means all rules are allowed\n{}\nExample: N1H1N2",
         codes
     );
-    let (args, solvers) =
+    let (_args, solvers) =
         query_args_or_user(prompt.as_str(), "Invalid input", "-g", arguments, |x| {
             try_get_solvers(x.to_string())
         });

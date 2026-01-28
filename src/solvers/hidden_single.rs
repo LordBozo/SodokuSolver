@@ -48,23 +48,17 @@ fn solve_hidden_single_collection(
     collection: &Vec<Vec<usize>>,
 ) -> Option<(Position, u8)> {
     for group in collection {
-        // TODO: rather than using a counts arr, use a set, so you can get length to check if its only 1
-        //  and if it is only 1, dont need to re-iterate to find where that 1 is
-        let mut counts = [0; 10];
+        let mut count_and_positions = [(0, 0); 10];
         for i in 0..group.len() {
             let possibilities = cells[group[i]].get_possibilities();
             for &possibility in possibilities.iter() {
-                counts[possibility as usize] += 1;
+                count_and_positions[possibility as usize].0 += 1;
+                count_and_positions[possibility as usize].1 = i;
             }
         }
-        for i in 0..group.len() {
-            let cell = group[i];
-            let possibilities = cells[cell].get_possibilities();
-            for possibility in possibilities {
-                if counts[possibility as usize] == 1 {
-                    //grid.set_cell(Position::from_index(cell), possibility as u8);
-                    return Some((Position::from_index(cell), possibility as u8));
-                }
+        for (i, (count, index)) in count_and_positions.iter().enumerate() {
+            if *count == 1 {
+                return Some((Position::from_index(group[*index]), i as u8));
             }
         }
     }
