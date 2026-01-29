@@ -5,9 +5,10 @@ pub struct Test {
 #[allow(dead_code)]
 pub mod all_tests {
     use super::*;
-    pub const ALL_TESTS: [Test; 10] = [
+    pub const ALL_TESTS: [Test; 15] = [
         easy_tests::TEST_1,
         easy_tests::TEST_2,
+        easy_tests::TEST_3,
         medium_tests::TEST_1,
         medium_tests::TEST_2,
         medium_tests::TEST_3,
@@ -16,10 +17,15 @@ pub mod all_tests {
         hard_tests::TEST_2,
         hard_tests::TEST_3,
         hard_tests::TEST_4,
+        hard_tests::TEST_5,
+        hard_tests::TEST_6,
+        hard_tests::TEST_7,
+        rule_tests::HIDDEN_PAIR,
     ];
-    pub const ALL_SOLVED_TESTS: [Test; 10] = [
+    pub const ALL_SOLVED_TESTS: [Test; 14] = [
         easy_tests::TEST_1,
         easy_tests::TEST_2,
+        easy_tests::TEST_3,
         medium_tests::TEST_1,
         medium_tests::TEST_2,
         medium_tests::TEST_3,
@@ -28,6 +34,9 @@ pub mod all_tests {
         hard_tests::TEST_2,
         hard_tests::TEST_3,
         hard_tests::TEST_4,
+        hard_tests::TEST_5,
+        hard_tests::TEST_6,
+        hard_tests::TEST_7,
     ];
     pub const ALL_UNSOLVED_TESTS: [Test; 1] = [rule_tests::HIDDEN_PAIR];
 }

@@ -8,7 +8,7 @@ use crate::grid::Grid;
 use crate::solvers::hidden_pair::HIDDEN_PAIR;
 use crate::solvers::hidden_single::HIDDEN_SINGLE;
 use crate::solvers::locked_candidates::LOCKED_CANDIDATES;
-use crate::solvers::naked_pair::NAKED_PAIR;
+use crate::solvers::naked_pair::{NAKED_PAIR, NAKED_QUAD, NAKED_TRIPLET};
 use crate::solvers::naked_single::NAKED_SINGLE;
 use crate::{parse_yes_no, query_args_or_user, CommandArgs};
 use clearscreen::clear;
@@ -16,11 +16,13 @@ use crossterm::{cursor, style, terminal, QueueableCommand};
 use std::io;
 use std::io::{stdin, Stdout, Write};
 
-pub const SOLVERS: [&Solver; 5] = [
+pub const SOLVERS: [&Solver; 7] = [
     &NAKED_SINGLE,
     &HIDDEN_SINGLE,
     &NAKED_PAIR,
     &HIDDEN_PAIR,
+    &NAKED_TRIPLET,
+    &NAKED_QUAD,
     &LOCKED_CANDIDATES,
 ];
 pub fn get_solvers(filter: &str) -> Vec<&'static Solver> {

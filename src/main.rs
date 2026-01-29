@@ -285,10 +285,11 @@ fn construct_codes() -> String {
     string.trim_end().to_string()
 }
 fn try_get_solvers(string: String) -> Option<Vec<&'static Solver>> {
-    let input = if !string.is_empty() && !string.contains("N1") {
-        String::from("N1").add(string.as_str())
+    let input = string.trim();
+    let input = if !input.is_empty() && !input.contains("N1") {
+        String::from("N1").add(input)
     } else {
-        string
+        input.to_string()
     };
     let solvers = get_solvers(input.as_str());
     // Maybe add check later to ensure it has Naked Single?
