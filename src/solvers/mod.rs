@@ -3,6 +3,7 @@ mod hidden_single;
 mod locked_candidates;
 mod naked_pair;
 mod naked_single;
+mod x_wing;
 
 use crate::grid::Grid;
 use crate::solvers::hidden_pair::HIDDEN_PAIR;
@@ -10,13 +11,14 @@ use crate::solvers::hidden_single::HIDDEN_SINGLE;
 use crate::solvers::locked_candidates::LOCKED_CANDIDATES;
 use crate::solvers::naked_pair::{NAKED_PAIR, NAKED_QUAD, NAKED_TRIPLET};
 use crate::solvers::naked_single::NAKED_SINGLE;
+use crate::solvers::x_wing::X_WING;
 use crate::{parse_yes_no, query_args_or_user, CommandArgs};
 use clearscreen::clear;
 use crossterm::{cursor, style, terminal, QueueableCommand};
 use std::io;
 use std::io::{stdin, Stdout, Write};
 
-pub const SOLVERS: [&Solver; 7] = [
+pub const SOLVERS: [&Solver; 8] = [
     &NAKED_SINGLE,
     &HIDDEN_SINGLE,
     &NAKED_PAIR,
@@ -24,6 +26,7 @@ pub const SOLVERS: [&Solver; 7] = [
     &NAKED_TRIPLET,
     &NAKED_QUAD,
     &LOCKED_CANDIDATES,
+    &X_WING,
 ];
 pub fn get_solvers(filter: &str) -> Vec<&'static Solver> {
     /* Rule Codes:
@@ -43,6 +46,19 @@ pub fn get_solvers(filter: &str) -> Vec<&'static Solver> {
         }
     }
     solvers
+}
+pub fn solve_subset(grid: &mut Grid, solvers: &Vec<&Solver>) {
+    let mut dirty = true;
+    while dirty {
+        dirty = false;
+        for step in solvers {
+            let func = step.solve_function;
+            dirty |= func(grid);
+            if dirty {
+                break;
+            }
+        }
+    }
 }
 pub fn solve(grid: &mut Grid, _arguments: &CommandArgs) {
     let mut dirty = true;
