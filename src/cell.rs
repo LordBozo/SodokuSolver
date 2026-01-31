@@ -105,9 +105,14 @@ impl Cell {
         }
         false
     }
-    pub(crate) fn remove_possibility(&mut self, value: u8) {
-        self.candidates &= !(1 << (value - 1));
-        self.is_answer_possible();
+    pub(crate) fn remove_possibility(&mut self, value: u8) -> bool {
+        let bit = 1 << (value - 1);
+        if self.candidates & bit != 0 {
+            self.candidates &= !bit;
+            self.is_answer_possible();
+            return true;
+        }
+        false
     }
 
     pub fn is_answer_possible(&self) {
@@ -136,7 +141,7 @@ impl Cell {
     pub(crate) fn set_value(&mut self, value: u8) {
         if self.answer.is_some() {
             if value != self.answer.unwrap() {
-                println!(
+                panic!(
                     "INVALID ANSWER: should be {:?}, is {value}",
                     self.answer.unwrap()
                 );
