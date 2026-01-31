@@ -38,7 +38,7 @@ pub mod all_tests {
         hard_tests::TEST_6,
         hard_tests::TEST_7,
     ];
-    pub const ALL_UNSOLVED_TESTS: [Test; 1] = [rule_tests::HIDDEN_PAIR];
+    pub const ALL_UNSOLVED_TESTS: [Test; 2] = [rule_tests::HIDDEN_PAIR, rule_tests::XY_WING];
 }
 #[allow(dead_code)]
 pub mod easy_tests {
@@ -406,6 +406,29 @@ pub mod rule_tests {
             [7, 4, 8, 1, 3, 9, 6, 2, 5],
             [5, 6, 2, 7, 8, 4, 1, 9, 3],
             [1, 3, 9, 2, 6, 5, 8, 4, 7],
+        ],
+    };
+    pub const XY_WING: Test = Test {
+        board: "\
+004637050
+090015032
+003009007
+000940320
+630700000
+000003071
+300598200
+008304705
+000170803",
+        answer: &[
+            [1, 2, 4, 6, 3, 7, 9, 5, 8],
+            [8, 9, 7, 4, 1, 5, 6, 3, 2],
+            [5, 6, 3, 2, 8, 9, 1, 4, 7],
+            [7, 8, 5, 9, 4, 1, 3, 2, 6],
+            [6, 3, 1, 7, 5, 2, 4, 8, 9],
+            [2, 4, 9, 8, 6, 3, 5, 7, 1],
+            [3, 7, 6, 5, 9, 8, 2, 1, 4],
+            [9, 1, 8, 3, 2, 4, 7, 6, 5],
+            [4, 5, 2, 1, 7, 6, 8, 9, 3],
         ],
     };
 }

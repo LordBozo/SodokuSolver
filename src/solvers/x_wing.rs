@@ -26,7 +26,7 @@ pub fn solve_x_wing(grid: &mut Grid) -> bool {
     dirty
 }
 fn x_wing_group(cells: &mut [Cell; 81], line_collection: &[[usize; 9]; 9]) -> bool {
-    let mut dirty = true;
+    let mut dirty = false;
 
     // Iterate over outer index
     for r in 0..8 {

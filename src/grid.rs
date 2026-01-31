@@ -75,8 +75,13 @@ impl Grid {
 // endregion Getters
 // region Init
 impl Grid {
-    pub fn from_string(input: &str, answer: Option<[[u8; 9]; 9]>) -> Option<Grid> {
+    pub fn from_string(
+        input: &str,
+        answer: Option<[[u8; 9]; 9]>,
+        auto_promote: bool,
+    ) -> Option<Grid> {
         let mut grid = Grid::new();
+        grid.auto_promote = auto_promote;
         grid.current_state = BoardState::Constructing;
         let mut starting_cell_count = 0;
         'rowloop: for (row, line) in input.lines().enumerate() {
@@ -155,6 +160,14 @@ impl Grid {
 // endregion Init
 
 impl Grid {
+    pub fn is_done(&self) -> bool {
+        for cell in self.cells {
+            if cell.value == 0 {
+                return false;
+            }
+        }
+        true
+    }
     pub fn set_cell(&mut self, pos: Position, value: u8) {
         let cell = &mut self.cells[pos.get_index()];
         if cell.value != 0 {

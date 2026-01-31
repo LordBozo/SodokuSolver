@@ -18,6 +18,16 @@ use crossterm::{cursor, style, terminal, QueueableCommand};
 use std::io;
 use std::io::{stdin, Stdout, Write};
 
+// TODO: Remaining Rules to add:
+//  XY-Wing
+//  XYZ-Wing
+//  Swordfish
+//  -
+//  Coloring
+//  Forcing Chain
+//  Nishio
+
+// Alternatively, add a final rule that will brute force the board
 pub const SOLVERS: [&Solver; 8] = [
     &NAKED_SINGLE,
     &HIDDEN_SINGLE,
@@ -73,6 +83,9 @@ pub fn solve(grid: &mut Grid, _arguments: &CommandArgs) {
                 break;
             }
         }
+        if grid.is_done() {
+            break;
+        }
     }
 }
 pub fn solve_async(grid: &mut Grid, arguments: &CommandArgs) {
@@ -107,6 +120,9 @@ pub fn solve_async(grid: &mut Grid, arguments: &CommandArgs) {
                 }
                 break;
             }
+        }
+        if grid.is_done() {
+            break;
         }
     }
 }

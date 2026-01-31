@@ -115,7 +115,7 @@ static COLS: &[[usize; 9]; 9] = &COLLECTIONS[1];
 static REGS: &[[usize; 9]; 9] = &COLLECTIONS[2];
 
 fn run_test(test: Test, arguments: &CommandArgs) {
-    let mut grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
+    let mut grid = Grid::from_string(test.board, Some(*test.answer), true).unwrap();
     solvers::solve(&mut grid, &arguments);
     let percent = grid.get_percent();
     if percent < 1f32 {
@@ -193,6 +193,8 @@ impl RunType {
 }
 
 fn print_help() {
+    // TODO: Split out all CMD Arguments into their own module to turn this into a simple array loop
+    // Also need support for flagged args instead of just assigned args, that support concatenation
     println!("-h: Prints this help section");
     println!(
         "-m: Selects what mode to run in, valid inputs are any abbreviated version of Solve, Generate, or Test"
@@ -210,7 +212,7 @@ fn input_sodoku_board(arguments: &CommandArgs) -> Grid {
     let arg_board = arguments.get_arg("-b");
     if arg_board.is_some() {
         let arg_board = arg_board.unwrap().replace("\\n", "\n");
-        let grid = Grid::from_string(arg_board.as_str(), None);
+        let grid = Grid::from_string(arg_board.as_str(), None, false);
         if grid.is_some() {
             return grid.unwrap();
         }
@@ -237,7 +239,7 @@ fn input_sodoku_board(arguments: &CommandArgs) -> Grid {
             }
             break;
         }
-        let grid = Grid::from_string(board.as_str(), None);
+        let grid = Grid::from_string(board.as_str(), None, false);
         if grid.is_some() {
             return grid.unwrap();
         }
@@ -296,7 +298,6 @@ fn try_get_solvers(string: String) -> Option<Vec<&'static Solver>> {
     Some(solvers)
 }
 fn mode_generate(arguments: &CommandArgs) {
-    let start_time = std::time::Instant::now();
     let codes = construct_codes();
     let prompt = format!(
         "Which Rules would you like to enable? Empty means all rules are allowed\n{}\nExample: N1H1N2",
@@ -306,6 +307,8 @@ fn mode_generate(arguments: &CommandArgs) {
         query_args_or_user(prompt.as_str(), "Invalid input", "-g", arguments, |x| {
             try_get_solvers(x.to_string())
         });
+
+    let start_time = std::time::Instant::now();
     let grid = generator::create_board(solvers);
     println!("Create Time: {:?}", start_time.elapsed());
 
@@ -341,7 +344,7 @@ fn main() {
         }
 
         RunType::Display => {
-            let mut grid = Grid::from_string(test.board, None).unwrap();
+            let mut grid = Grid::from_string(test.board, None, true).unwrap();
             solvers::solve_async(&mut grid, &arguments);
         }
         RunType::Time => {
@@ -349,14 +352,14 @@ fn main() {
             const ITERATIONS: usize = 10000;
             let start_time = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                grid = Grid::from_string(test.board, Some(*test.answer)).unwrap();
+                grid = Grid::from_string(test.board, Some(*test.answer), true).unwrap();
                 solvers::solve(&mut grid, &arguments);
             }
             println!("Solve Time: {:?}", start_time.elapsed() / ITERATIONS as u32);
         }
         RunType::NYTimes => {
             std::thread::sleep(std::time::Duration::from_millis(2000));
-            let mut grid = Grid::from_string(test.board, None).unwrap();
+            let mut grid = Grid::from_string(test.board, None, true).unwrap();
             solvers::solve(&mut grid, &arguments);
             let start_time = std::time::Instant::now();
             sodoku_output::send_input(grid);
