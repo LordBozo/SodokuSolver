@@ -11,19 +11,18 @@ pub const X_WING: Solver = Solver::new(
     step_x_wing,
 );
 pub fn step_x_wing(grid: &mut Grid) -> bool {
-    let mut dirty = false;
     if x_wing_group(&mut grid.cells, ROWS) {
         return true;
     }
     if x_wing_group(&mut grid.cells, COLS) {
         return true;
     }
-    dirty
+    false
 }
 pub fn solve_x_wing(grid: &mut Grid) -> bool {
     let mut dirty = false;
-    x_wing_group(&mut grid.cells, ROWS);
-    x_wing_group(&mut grid.cells, COLS);
+    dirty |= x_wing_group(&mut grid.cells, ROWS);
+    dirty |= x_wing_group(&mut grid.cells, COLS);
     dirty
 }
 fn x_wing_group(cells: &mut [Cell; 81], line_collection: &[[usize; 9]; 9]) -> bool {

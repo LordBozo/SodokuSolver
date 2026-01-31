@@ -47,6 +47,7 @@ pub fn get_solvers(filter: &str) -> Vec<&'static Solver> {
     }
     solvers
 }
+#[allow(unused)]
 pub fn solve_subset(grid: &mut Grid, solvers: &Vec<&Solver>) {
     let mut dirty = true;
     while dirty {
